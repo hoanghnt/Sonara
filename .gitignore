@@ -1,0 +1,38 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+*.DotSettings.user
+
+# Node
+node_modules/
+dist/
+.env
+.env.local
+
+# IDE
+.idea/
+.cursor/
+*.swp
+*.swo
+
+# Cursor
+.cursorrules
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Docker
+postgres_data/
+
+# Uploads (local dev)
+uploads/
+upload/
+
+# Logs
+*.log

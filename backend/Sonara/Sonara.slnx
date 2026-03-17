@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Sonara.API/Sonara.API.csproj" />
+  <Project Path="Sonara.Application/Sonara.Application.csproj" />
+  <Project Path="Sonara.Domain/Sonara.Domain.csproj" />
+  <Project Path="Sonara.Infrastructure/Sonara.Infrastructure.csproj" />
+</Solution>
