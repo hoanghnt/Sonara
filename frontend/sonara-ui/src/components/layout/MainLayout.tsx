@@ -1,0 +1,17 @@
+import { Outlet } from "react-router-dom";
+import Sidebar from "./Sidebar";
+import PlayerBar from "./PlayerBar";
+
+const MainLayout = () => {
+  return (
+    <div className="flex h-screen bg-black text-white">
+      <Sidebar />
+      <main className="flex-1 overflow-y-auto pb-24">
+        <Outlet />
+      </main>
+      <PlayerBar />
+    </div>
+  );
+};
+
+export default MainLayout;
