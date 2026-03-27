@@ -18,7 +18,9 @@ WORKDIR /src
 COPY Sonara/ ./Sonara/
 
 WORKDIR /src/Sonara
-RUN dotnet publish Sonara.API/Sonara.API.csproj -c Release -o /app/publish --no-restore
+
+RUN dotnet restore Sonara.API/Sonara.API.csproj \
+    && dotnet publish Sonara.API/Sonara.API.csproj -c Release -o /app/publish --no-restore
 
 FROM base AS final
 WORKDIR /app

@@ -9,10 +9,13 @@ const PlayerBar = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
+  const apiBase =
+  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "/api";
+
   useEffect(() => {
     if (!audioRef.current || !currentSong) return;
 
-    audioRef.current.src = `http://localhost:5078/api/songs/${currentSong.id}/stream`;
+    audioRef.current.src = `${apiBase}/songs/${currentSong.id}/stream`;
     audioRef.current.play();
   }, [currentSong]);
 

@@ -7,7 +7,7 @@ import AddToPlaylist from "../components/AddToPlaylist";
 const Home = () => {
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
-  const { playSong, currentSong, isPlaying, togglePlay } = usePlayerStore();
+  const { playSong, currentSong, togglePlay } = usePlayerStore();
 
   useEffect(() => {
     const fetchSongs = async () => {

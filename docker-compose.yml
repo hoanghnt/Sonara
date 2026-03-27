@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: sonara
       POSTGRES_USER: sonara
-      POSTGRES_PASSWORD: sonara123
+      POSTGRES_PASSWORD: '@sonara123@'
     ports:
       - "5432:5432"
     volumes:
@@ -29,13 +29,14 @@ services:
     container_name: sonara-api
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=sonara;Username=sonara;Password=sonara123"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=sonara;Username=sonara;Password=@sonara123@"
+      JWT_SECRET: ${JWT_SECRET}
     ports:
       - "8080:8080"
     depends_on:
       - postgres
     volumes:
-      - uploads:/app/uploads
+      - sonara_uploads:/app/upload
 
   frontend:
     build:
@@ -49,4 +50,4 @@ services:
 
 volumes:
   postgres_data:
-  uploads:
+  sonara_uploads:

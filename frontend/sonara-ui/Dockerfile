@@ -5,7 +5,9 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+ENV VITE_API_BASE_URL=/api
 RUN npm run build
+
 
 FROM nginx:alpine AS final
 COPY --from=build /app/dist /usr/share/nginx/html

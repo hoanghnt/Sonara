@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { authService } from "../api/services/authService";
 import { useAuthStore } from "../stores/authStore";
@@ -10,7 +10,14 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const { login } = useAuthStore();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/", {replace: true});
+    }
+  }, [isAuthenticated, navigate]); 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

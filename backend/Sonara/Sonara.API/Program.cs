@@ -7,13 +7,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplicationServices();
 builder.Services.AddJwtAuthentication(builder.Configuration);
+const long maxUploadBodyBytes = 60L * 1024 * 1024;
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
 {
-    options.MultipartBodyLengthLimit = 100_000_000;
+    options.MultipartBodyLengthLimit = maxUploadBodyBytes;
 });
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.Limits.MaxRequestBodySize = 100_000_000;
+    options.Limits.MaxRequestBodySize = maxUploadBodyBytes;
 });
 builder.Services.AddControllers();
 builder.Services.AddDbContext<SonaraDbContext>(options => 

@@ -11,6 +11,16 @@ public class SongService : ISongService
     private readonly IFileService _fileService;
     private readonly ILogger<SongService> _logger;
 
+    private const long MaxAudioBytes = 50L * 1024 * 1024;
+
+    private const long MaxCoverBytes = 5L * 1024 * 1024;
+
+    private static readonly HashSet<string> AllowedAudioExtensions =
+        new(StringComparer.OrdinalIgnoreCase) { ".mp3", ".wav", ".flac", ".m4a", ".ogg" };
+    
+    private static readonly HashSet<string> AllowedCoverExtensions =
+        new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
+
     public SongService(ISongRepository songRepository, IFileService fileService, ILogger<SongService> logger)
     {
         _songRepository = songRepository;
@@ -63,6 +73,8 @@ public class SongService : ISongService
 
     public async Task<SongResponseDto> UploadAsync(UploadSongDto dto, Guid userId)
     {
+        ValidateUpload(dto);
+        
         var filePath = await _fileService.SaveFileAsync(dto.File, "songs");
         var duration = _fileService.GetAudioDuration(filePath);
         string? coverImagePath = null;
@@ -91,5 +103,24 @@ public class SongService : ISongService
         return new SongResponseDto(
             song.Id, song.Title, song.Artist, song.Album, song.Duration, song.FileSize, song.CoverImagePath ?? "",
             song.CreatedAt);
+    }
+
+    private static void ValidateUpload(UploadSongDto dto)
+    {
+        if (dto.File.Length <= 0)
+            throw new ArgumentException("Audio file is empty.");
+        if (dto.File.Length > MaxAudioBytes)
+            throw new ArgumentException("Audio file must be 50 MB or smaller.");
+        var audioExt = Path.GetExtension(dto.File.FileName);
+        if (string.IsNullOrEmpty(audioExt) || !AllowedAudioExtensions.Contains(audioExt))
+            throw new ArgumentException("Audio format not allowed. Use MP3, WAV, FLAC, M4A, or OGG.");
+        if (dto.CoverImage is { Length: > 0 })
+        {
+            if (dto.CoverImage.Length > MaxCoverBytes)
+                throw new ArgumentException("Cover image must be 5 MB or smaller.");
+            var coverExt = Path.GetExtension(dto.CoverImage.FileName);
+            if (string.IsNullOrEmpty(coverExt) || !AllowedCoverExtensions.Contains(coverExt))
+                throw new ArgumentException("Cover must be JPG, PNG, WebP, or GIF.");
+        }
     }
 }
