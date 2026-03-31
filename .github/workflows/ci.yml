@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore & build API
+        run: |
+          dotnet restore backend/Sonara/Sonara.API/Sonara.API.csproj
+          dotnet build backend/Sonara/Sonara.API/Sonara.API.csproj -c Release --no-restore
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/sonara-ui/package-lock.json
+
+      - name: Install & build frontend
+        working-directory: frontend/sonara-ui
+        env:
+          VITE_API_BASE_URL: https://example.com/api
+        run: |
+          npm ci
+          npm run build

@@ -13,6 +13,7 @@ node_modules/
 dist/
 .env
 .env.local
+.env.production
 
 # IDE
 .idea/
@@ -36,3 +37,6 @@ upload/
 
 # Logs
 *.log
+
+# Local development settings
+appsettings.Development.json
