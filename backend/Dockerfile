@@ -24,5 +24,8 @@ RUN dotnet restore Sonara.API/Sonara.API.csproj \
 
 FROM base AS final
 WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "Sonara.API.dll"]
