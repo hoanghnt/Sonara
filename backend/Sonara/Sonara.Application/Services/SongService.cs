@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Sonara.Application.DTOs.Song;
 using Sonara.Application.Interfaces;
@@ -17,7 +18,7 @@ public class SongService : ISongService
 
     private static readonly HashSet<string> AllowedAudioExtensions =
         new(StringComparer.OrdinalIgnoreCase) { ".mp3", ".wav", ".flac", ".m4a", ".ogg" };
-    
+
     private static readonly HashSet<string> AllowedCoverExtensions =
         new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
 
@@ -33,8 +34,22 @@ public class SongService : ISongService
         var song = await _songRepository.GetByIdAsync(id);
         if (song == null) throw new Exception("Song not found!");
 
+        var audioRef = song.FilePath;
+        var coverRef = song.CoverImagePath;
+
         _songRepository.Delete(song);
         await _songRepository.SaveChangesAsync();
+
+        try
+        {
+            await _fileService.DeleteFileAsync(audioRef);
+            if (!string.IsNullOrEmpty(coverRef))
+                await _fileService.DeleteFileAsync(coverRef!);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to delete stored files for song {SongId}", id);
+        }
     }
 
     public async Task<List<SongResponseDto>> GetAllAsync()
@@ -53,17 +68,6 @@ public class SongService : ISongService
             song.CoverImagePath ?? "", song.CreatedAt);
     }
 
-    public async Task<string?> GetFilePathAsync(Guid id)
-    {
-        var song = await _songRepository.GetByIdAsync(id);
-        if (song == null) throw new Exception("Song not found!");
-
-        var filePath = Path.GetFullPath(song.FilePath);
-        if (filePath == null) throw new Exception("File not found!");
-
-        return filePath;
-    }
-
     public async Task<List<SongResponseDto>> SearchAsync(string keyword)
     {
         var songs = await _songRepository.SearchAsync(keyword);
@@ -74,35 +78,65 @@ public class SongService : ISongService
     public async Task<SongResponseDto> UploadAsync(UploadSongDto dto, Guid userId)
     {
         ValidateUpload(dto);
-        
-        var filePath = await _fileService.SaveFileAsync(dto.File, "songs");
-        var duration = _fileService.GetAudioDuration(filePath);
-        string? coverImagePath = null;
-        if (dto.CoverImage != null)
+
+        var tempAudio = await WriteFormFileToTempAsync(dto.File);
+        try
         {
-            coverImagePath = await _fileService.SaveFileAsync(dto.CoverImage, "covers");
+            var duration = _fileService.GetAudioDuration(tempAudio);
+            var filePath = await _fileService.CommitStoredFileAsync(tempAudio, "songs");
+
+            string? coverImagePath = null;
+            if (dto.CoverImage is { Length: > 0 })
+            {
+                var tempCover = await WriteFormFileToTempAsync(dto.CoverImage);
+                try
+                {
+                    coverImagePath = await _fileService.CommitStoredFileAsync(tempCover, "covers");
+                }
+                catch
+                {
+                    if (File.Exists(tempCover))
+                        File.Delete(tempCover);
+                    throw;
+                }
+            }
+
+            var song = new Song
+            {
+                Id = Guid.NewGuid(),
+                Title = dto.Title,
+                Artist = dto.Artist,
+                Album = dto.Album,
+                Duration = duration,
+                FilePath = filePath,
+                FileSize = dto.File.Length,
+                CoverImagePath = coverImagePath,
+                UploadedBy = userId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _songRepository.AddAsync(song);
+            await _songRepository.SaveChangesAsync();
+
+            return new SongResponseDto(
+                song.Id, song.Title, song.Artist, song.Album, song.Duration, song.FileSize, song.CoverImagePath ?? "",
+                song.CreatedAt);
         }
-
-        var song = new Song
+        catch
         {
-            Id = Guid.NewGuid(),
-            Title = dto.Title,
-            Artist = dto.Artist,
-            Album = dto.Album,
-            Duration = duration,
-            FilePath = filePath,
-            FileSize = dto.File.Length,
-            CoverImagePath = coverImagePath,
-            UploadedBy = userId,
-            CreatedAt = DateTime.UtcNow
-        };
+            if (File.Exists(tempAudio))
+                File.Delete(tempAudio);
+            throw;
+        }
+    }
 
-        await _songRepository.AddAsync(song);
-        await _songRepository.SaveChangesAsync();
-
-        return new SongResponseDto(
-            song.Id, song.Title, song.Artist, song.Album, song.Duration, song.FileSize, song.CoverImagePath ?? "",
-            song.CreatedAt);
+    private static async Task<string> WriteFormFileToTempAsync(IFormFile file)
+    {
+        var ext = Path.GetExtension(file.FileName);
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}{ext}");
+        await using (var output = File.Create(path))
+            await file.CopyToAsync(output);
+        return path;
     }
 
     private static void ValidateUpload(UploadSongDto dto)

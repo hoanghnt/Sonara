@@ -5,7 +5,7 @@ using Sonara.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddApplicationServices();
+builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddJwtAuthentication(builder.Configuration);
 const long maxUploadBodyBytes = 60L * 1024 * 1024;
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>

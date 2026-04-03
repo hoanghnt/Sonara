@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sonara.Application.DTOs.Song;
 using Sonara.Application.Interfaces;
-using Sonara.Domain.Entities;
 
 namespace Sonara.API.Controllers;
 
@@ -12,11 +11,16 @@ namespace Sonara.API.Controllers;
 public class SongController : ControllerBase
 {
     private readonly ISongService _songService;
+    private readonly ISongStreamService _songStreamService;
     private readonly ILogger<SongController> _logger;
 
-    public SongController(ISongService songService, ILogger<SongController> logger)
+    public SongController(
+        ISongService songService,
+        ISongStreamService songStreamService,
+        ILogger<SongController> logger)
     {
         _songService = songService;
+        _songStreamService = songStreamService;
         _logger = logger;
     }
 
@@ -66,18 +70,21 @@ public class SongController : ControllerBase
     }
 
     [HttpGet("{id}/stream")]
-    public async Task<IActionResult> Stream(Guid id)
+    public async Task<IActionResult> Stream(Guid id, CancellationToken cancellationToken)
     {
         try
         {
-            var filePath = await _songService.GetFilePathAsync(id);
-            if (!System.IO.File.Exists(filePath)) return NotFound("File not found on disk");
+            var result = await _songStreamService.ResolveAsync(id, cancellationToken);
+            if (result == null)
+                return NotFound();
 
-            return PhysicalFile(
-                filePath,
-                "audio/mpeg", 
-                enableRangeProcessing: true
-            );
+            if (!string.IsNullOrEmpty(result.RedirectUrl))
+                return Redirect(result.RedirectUrl);
+
+            if (string.IsNullOrEmpty(result.LocalPath) || !System.IO.File.Exists(result.LocalPath))
+                return NotFound();
+
+            return PhysicalFile(result.LocalPath, result.ContentType, enableRangeProcessing: true);
         }
         catch (Exception e)
         {

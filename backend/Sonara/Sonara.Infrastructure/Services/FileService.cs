@@ -1,35 +1,39 @@
-using Microsoft.AspNetCore.Http;
 using Sonara.Application.Interfaces;
 
 namespace Sonara.Infrastructure.Services;
 
 public class FileService : IFileService
 {
-    public void DeleteFile(string filePath)
+    public int GetAudioDuration(string tempFilePath)
     {
-        if (filePath == null) throw new Exception("filePath not found!");
-        File.Delete(filePath);
-
+        using var file = TagLib.File.Create(tempFilePath);
+        return (int)file.Properties.Duration.TotalSeconds;
     }
 
-    public async Task<string> SaveFileAsync(IFormFile file, string folder)
+    public Task<string> CommitStoredFileAsync(string tempFilePath, string folder)
     {
-        var fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
-
+        var fileName = Guid.NewGuid() + Path.GetExtension(tempFilePath);
         var folderPath = Path.Combine("upload", folder);
         Directory.CreateDirectory(folderPath);
+        var destPath = Path.Combine(folderPath, fileName);
 
-        var filePath = Path.Combine(folderPath, fileName);
+        File.Move(tempFilePath, destPath, overwrite: true);
 
-        using var stream = new FileStream(filePath, FileMode.Create);
-        await file.CopyToAsync(stream);
-
-        return filePath;
+        return Task.FromResult(destPath);
     }
 
-    public int GetAudioDuration(string filePath)
+    public Task DeleteFileAsync(string storedReference)
     {
-        var file = TagLib.File.Create(filePath);
-        return (int)file.Properties.Duration.TotalSeconds;
+        if (string.IsNullOrEmpty(storedReference))
+            return Task.CompletedTask;
+
+        if (storedReference.StartsWith(SupabaseFileService.StorageKeyPrefix, StringComparison.Ordinal))
+            return Task.CompletedTask;
+
+        var path = Path.GetFullPath(storedReference);
+        if (File.Exists(path))
+            File.Delete(path);
+
+        return Task.CompletedTask;
     }
 }
